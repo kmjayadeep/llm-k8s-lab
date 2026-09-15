@@ -88,3 +88,10 @@ supports reasoning, added `--reasoning-parser qwen3`
 chosen only llm, and skipped image and vision
 
 additionaly, tool calling enabled with `--enable-auto-tool-choice`
+
+
+
+
+I heard good things about https://huggingface.co/ISTA-DASLab/Qwen3.8-27B-GSQ-RCO-GGUF
+
+for being able to run in 16G VRAM. Will try that at some point

@@ -1,6 +1,42 @@
 const API = "/v1";
 const messages = [];
 
+const tools = [
+  {
+    type: "function",
+    function: {
+      name: "get_current_time",
+      description: "Get the current date and time in an IANA timezone.",
+      parameters: {
+        type: "object",
+        properties: {
+          timezone: {
+            type: "string",
+            description: "IANA timezone such as UTC, Europe/London, or Asia/Kolkata",
+          },
+        },
+        required: ["timezone"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "calculate",
+      description: "Perform basic arithmetic on two numbers.",
+      parameters: {
+        type: "object",
+        properties: {
+          operation: { type: "string", enum: ["add", "subtract", "multiply", "divide"] },
+          a: { type: "number" },
+          b: { type: "number" },
+        },
+        required: ["operation", "a", "b"],
+      },
+    },
+  },
+];
+
 const elements = {
   form: document.querySelector("#chat-form"),
   prompt: document.querySelector("#prompt"),
@@ -10,6 +46,7 @@ const elements = {
   model: document.querySelector("#model"),
   temperature: document.querySelector("#temperature"),
   maxTokens: document.querySelector("#max-tokens"),
+  enableTools: document.querySelector("#enable-tools"),
   status: document.querySelector("#status"),
   metrics: document.querySelector("#metrics"),
   running: document.querySelector("#running"),
@@ -108,6 +145,110 @@ async function loadModels() {
   }
 }
 
+function executeTool(name, args) {
+  if (name === "get_current_time") {
+    const timezone = args.timezone || "UTC";
+    try {
+      return JSON.stringify({
+        timezone,
+        datetime: new Intl.DateTimeFormat("en-CA", {
+          dateStyle: "full",
+          timeStyle: "long",
+          timeZone: timezone,
+        }).format(new Date()),
+      });
+    } catch (_) {
+      return JSON.stringify({ error: `Invalid timezone: ${timezone}` });
+    }
+  }
+
+  if (name === "calculate") {
+    const a = Number(args.a);
+    const b = Number(args.b);
+    const operations = {
+      add: () => a + b,
+      subtract: () => a - b,
+      multiply: () => a * b,
+      divide: () => b === 0 ? null : a / b,
+    };
+    if (!Number.isFinite(a) || !Number.isFinite(b) || !operations[args.operation]) {
+      return JSON.stringify({ error: "Invalid calculator arguments" });
+    }
+    const result = operations[args.operation]();
+    return result === null
+      ? JSON.stringify({ error: "Division by zero" })
+      : JSON.stringify({ result });
+  }
+
+  return JSON.stringify({ error: `Unknown tool: ${name}` });
+}
+
+async function runToolReply(metricsBefore) {
+  const started = performance.now();
+  let totalCompletionTokens = 0;
+
+  for (let step = 0; step < 5; step += 1) {
+    const response = await fetch(`${API}/chat/completions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: elements.model.value,
+        messages,
+        tools,
+        tool_choice: "auto",
+        temperature: Number(elements.temperature.value),
+        max_tokens: Number(elements.maxTokens.value),
+        chat_template_kwargs: { enable_thinking: false },
+      }),
+    });
+
+    if (!response.ok) throw new Error(`${response.status}: ${await response.text()}`);
+    const body = await response.json();
+    totalCompletionTokens += body.usage?.completion_tokens || 0;
+    const reply = body.choices?.[0]?.message;
+    if (!reply) throw new Error("The model returned no response");
+
+    if (!reply.tool_calls?.length) {
+      const content = reply.content || "(No text response)";
+      addBubble("assistant", content);
+      messages.push({ role: "assistant", content: reply.content || "" });
+      const elapsedSeconds = (performance.now() - started) / 1000;
+      const rate = totalCompletionTokens
+        ? `${(totalCompletionTokens / elapsedSeconds).toFixed(1)} output tok/s`
+        : "token count unavailable";
+      elements.metrics.textContent = `Tools enabled · Total: ${elapsedSeconds.toFixed(2)} s · ${rate}`;
+      await fetchServerMetrics().catch(() => {});
+      return;
+    }
+
+    messages.push({
+      role: "assistant",
+      content: reply.content,
+      tool_calls: reply.tool_calls,
+    });
+
+    for (const call of reply.tool_calls) {
+      let args;
+      try {
+        args = JSON.parse(call.function.arguments || "{}");
+      } catch (_) {
+        args = {};
+      }
+      addBubble("tool", `Calling ${call.function.name}\n${JSON.stringify(args, null, 2)}`);
+      const result = executeTool(call.function.name, args);
+      addBubble("tool-result", `Result\n${result}`);
+      messages.push({
+        role: "tool",
+        tool_call_id: call.id,
+        name: call.function.name,
+        content: result,
+      });
+    }
+  }
+
+  throw new Error("Tool-call limit reached");
+}
+
 async function streamReply(metricsBefore) {
   const assistant = addBubble("assistant");
   const started = performance.now();
@@ -187,7 +328,11 @@ elements.form.addEventListener("submit", async (event) => {
 
   try {
     const metricsBefore = await fetchServerMetrics(false).catch(() => null);
-    await streamReply(metricsBefore);
+    if (elements.enableTools.checked) {
+      await runToolReply(metricsBefore);
+    } else {
+      await streamReply(metricsBefore);
+    }
     elements.status.textContent = "Ready";
   } catch (error) {
     addBubble("error", `Request failed: ${error.message}`);

@@ -60,6 +60,16 @@ input, select, textarea {
 
 #model { min-width: 260px; }
 #temperature, #max-tokens { width: 100px; }
+.settings .toggle {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  align-self: end;
+  gap: 0.45rem;
+  min-height: 38px;
+  color: #e5e7eb;
+}
+.toggle input { width: 1rem; height: 1rem; accent-color: #2563eb; }
 #status { margin-left: auto; color: #86efac; }
 
 .telemetry {
@@ -100,6 +110,17 @@ input, select, textarea {
 
 .message.user { align-self: flex-end; background: #2563eb; }
 .message.assistant { align-self: flex-start; background: #1f2937; }
+.message.tool, .message.tool-result {
+  align-self: flex-start;
+  max-width: 75%;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid #6d28d9;
+  background: #2e1065;
+  color: #ddd6fe;
+  font-family: ui-monospace, monospace;
+  font-size: 0.82rem;
+}
+.message.tool-result { border-color: #047857; background: #052e2b; color: #a7f3d0; }
 .message.error { align-self: center; background: #7f1d1d; }
 .empty { margin: auto; color: #6b7280; }
 
