@@ -86,3 +86,5 @@ additionally i had to set max-num-seqs to 32
 supports reasoning, added `--reasoning-parser qwen3`
 
 chosen only llm, and skipped image and vision
+
+additionaly, tool calling enabled with `--enable-auto-tool-choice`
