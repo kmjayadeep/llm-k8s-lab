@@ -43,4 +43,4 @@ PCI mappings
 - 0000:03:00.0 → RX 7900 GRE                                                                       
 - 0000:12:00.0 → Raphael iGPU
 
-User also needs to be in `render` group to access the render nodes.
+User also needs to be in `render` or `video` group to access the render nodes.
