@@ -11,3 +11,5 @@ kind get clusters | grep -qx "$cluster" || \
   kind create cluster --config "kind/kind-gpu.yaml"
 
 kubectx "$context"
+
+kubectl apply -f kind/amd-device-plugin.yaml

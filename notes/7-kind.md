@@ -9,7 +9,7 @@ Start using
 It mounts the kfd and dri devices into the control plane node. Also maps hostport 8000 into containerport 30434. it can be used by nodeport service
 
 
-Install AMD device plugin through 
+It also Installs AMD device plugin through 
 
 ```
 k apply -f kind/amd-device-plugin.yaml
