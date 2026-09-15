@@ -1,9 +1,21 @@
 # Kind kubernetes
 
-Start using
+Start or resume the cluster using
 
 ```
 ./scripts/kind-up.sh
+```
+
+Stop the container, but dont delete the cluster (as it will require pulling the 75GB container image again on startup)
+
+```
+./scripts/kind-down.sh
+```
+
+Delete the cluster entirely
+
+```
+./scripts/kind-delete.sh
 ```
 
 It mounts the kfd and dri devices into the control plane node. Also maps hostport 8000 into containerport 30434. it can be used by nodeport service

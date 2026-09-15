@@ -2,5 +2,10 @@
 set -euo pipefail
 
 cluster=kind-gpu
+node=${cluster}-control-plane
 
-kind delete cluster --name "$cluster" || true
+if docker inspect "$node" >/dev/null 2>&1; then
+  docker stop "$node"
+else
+  echo "Kind cluster '$cluster' does not exist."
+fi
