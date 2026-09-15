@@ -73,3 +73,16 @@ curl -s http://127.0.0.1:8000/v1/models | jq
   ]
 }
 ```
+
+2. Qwen 3.5-2b
+
+using a more recent rocm container
+
+
+2b params * 16bits (fp16 dtype) ~ 4GB vram
+
+additionally i had to set max-num-seqs to 32
+
+supports reasoning, added `--reasoning-parser qwen3`
+
+chosen only llm, and skipped image and vision

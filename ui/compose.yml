@@ -1,0 +1,13 @@
+services:
+  ui:
+    image: ${UI_IMAGE:-vllm-lab-ui:local}
+    build:
+      context: .
+    container_name: vllm-lab-ui
+    network_mode: host
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3001/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: "no"
