@@ -8,6 +8,11 @@ nodes:
         containerPath: /dev/kfd
       - hostPath: /dev/dri
         containerPath: /dev/dri
+      # Persist model and kernel caches outside the disposable Kind node.
+      - hostPath: /home/jayadeep/.cache/huggingface
+        containerPath: /var/cache/huggingface
+      - hostPath: /home/jayadeep/.cache/vllm/triton
+        containerPath: /var/cache/vllm-triton
     extraPortMappings:
       - containerPort: 30434
         hostPort: 8000

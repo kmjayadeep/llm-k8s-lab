@@ -1,0 +1,99 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm
+  namespace: inference
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: vllm
+  template:
+    metadata:
+      labels:
+        app: vllm
+    spec:
+      # Prevent Kubernetes service variables such as VLLM_PORT=tcp://...
+      # from colliding with vLLM's own VLLM_* environment variables.
+      enableServiceLinks: false
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: vllm
+          image: rocm/vllm:rocm7.14.1_rdna_ubuntu24.04_py3.14_pytorch_2.11_vllm_0.23.0
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/bash", "-lc"]
+          args:
+            - >-
+              exec vllm serve Qwen/Qwen3.5-2B
+              --served-model-name qwen
+              --dtype float16
+              --max-model-len 8192
+              --max-num-seqs 32
+              --gpu-memory-utilization 0.80
+              --reasoning-parser qwen3
+              --enable-auto-tool-choice
+              --tool-call-parser qwen3_coder
+              --language-model-only
+              --host 0.0.0.0
+              --port 8000
+          env:
+            - name: HIP_VISIBLE_DEVICES
+              value: "0"
+            - name: HF_HOME
+              value: /root/.cache/huggingface
+          ports:
+            - name: http
+              containerPort: 8000
+          resources:
+            requests:
+              amd.com/gpu: 1
+            limits:
+              amd.com/gpu: 1
+          securityContext:
+            privileged: false
+            allowPrivilegeEscalation: false
+            seccompProfile:
+              type: Unconfined
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 180
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          volumeMounts:
+            - name: huggingface-cache
+              mountPath: /root/.cache/huggingface
+            - name: triton-cache
+              mountPath: /root/.triton
+            - name: shm
+              mountPath: /dev/shm
+      volumes:
+        - name: huggingface-cache
+          hostPath:
+            path: /var/cache/huggingface
+            type: Directory
+        - name: triton-cache
+          hostPath:
+            path: /var/cache/vllm-triton
+            type: Directory
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 8Gi
