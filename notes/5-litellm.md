@@ -12,3 +12,8 @@ model: qwen
 Then go to <https://litellm.cosmos.cboxlab.com/ui/playground/> and test
 
 Check <https://litellm.cosmos.cboxlab.com/ui/logs/> to inspect the logs
+
+
+## Ironclaw
+
+Tested by adding litellm as a new provider in ironclaw. Works with 3b model with tool calling enabled and 64k context window. Not great, but works with ~80 tok/s

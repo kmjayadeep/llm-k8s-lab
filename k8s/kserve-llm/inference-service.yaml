@@ -1,0 +1,83 @@
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: qwen
+  namespace: inference
+spec:
+  predictor:
+    containers:
+      - name: kserve-container
+        image: rocm/vllm:rocm7.14.1_rdna_ubuntu24.04_py3.14_pytorch_2.11_vllm_0.23.0
+        imagePullPolicy: IfNotPresent
+        command: ["/bin/bash", "-lc"]
+        args:
+          - >-
+            exec vllm serve Qwen/Qwen2.5-0.5B-Instruct
+            --served-model-name qwen
+            --dtype float16
+            --max-model-len 2048
+            --max-num-seqs 16
+            --gpu-memory-utilization 0.60
+            --enforce-eager
+            --host 0.0.0.0
+            --port 8080
+        env:
+          - name: HF_HOME
+            value: /root/.cache/huggingface
+        ports:
+          - name: http1
+            containerPort: 8080
+        resources:
+          requests:
+            cpu: "1"
+            memory: 4Gi
+            amd.com/gpu: "1"
+          limits:
+            cpu: "4"
+            memory: 8Gi
+            amd.com/gpu: "1"
+        securityContext:
+          allowPrivilegeEscalation: false
+          seccompProfile:
+            type: Unconfined
+        startupProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 180
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
+        volumeMounts:
+          - name: huggingface-cache
+            mountPath: /root/.cache/huggingface
+          - name: triton-cache
+            mountPath: /root/.triton
+          - name: shm
+            mountPath: /dev/shm
+    volumes:
+      - name: huggingface-cache
+        hostPath:
+          path: /var/cache/huggingface
+          type: Directory
+      - name: triton-cache
+        hostPath:
+          path: /var/cache/vllm-triton
+          type: Directory
+      - name: shm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 4Gi
