@@ -11,12 +11,16 @@
       <header>
         <div>
           <h1>vLLM Lab Chat</h1>
-          <p>Minimal browser client for the local OpenAI-compatible API</p>
+          <p>Minimal browser client for an OpenAI-compatible API</p>
         </div>
         <button id="clear" class="secondary" type="button">New chat</button>
       </header>
 
       <section class="settings" aria-label="Generation settings">
+        <label class="endpoint">
+          Server URL
+          <input id="endpoint" type="url" value="https://llm-gateway.cosmos.cboxlab.com" spellcheck="false" required>
+        </label>
         <label>
           Model
           <select id="model"></select>
@@ -50,7 +54,7 @@
       </section>
 
       <section id="messages" class="messages" aria-live="polite">
-        <div class="empty">Send a message to the local model.</div>
+        <div class="empty">Send a message to the model.</div>
       </section>
 
       <form id="chat-form">
@@ -61,6 +65,6 @@
 
       <footer id="metrics">No request metrics yet.</footer>
     </main>
-    <script src="app.js?v=3"></script>
+    <script src="app.js?v=4"></script>
   </body>
 </html>

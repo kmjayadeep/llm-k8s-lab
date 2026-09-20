@@ -58,6 +58,8 @@ input, select, textarea {
   padding: 0.6rem;
 }
 
+.endpoint { flex: 1 1 300px; }
+#endpoint { width: 100%; }
 #model { min-width: 260px; }
 #temperature, #max-tokens { width: 100px; }
 .settings .toggle {
@@ -141,6 +143,7 @@ footer { color: #9ca3af; font-size: 0.85rem; }
 
 @media (max-width: 600px) {
   .app { padding: 0.75rem; }
+  .endpoint { flex-basis: 100%; }
   #model { min-width: 180px; max-width: 100%; }
   #status { width: 100%; margin-left: 0; }
   .telemetry { grid-template-columns: repeat(2, 1fr); }

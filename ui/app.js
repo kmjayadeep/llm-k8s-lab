@@ -1,4 +1,4 @@
-const API = "/v1";
+const DEFAULT_ENDPOINT = "https://llm-gateway.cosmos.cboxlab.com";
 const messages = [];
 
 const tools = [
@@ -43,6 +43,7 @@ const elements = {
   send: document.querySelector("#send"),
   clear: document.querySelector("#clear"),
   messages: document.querySelector("#messages"),
+  endpoint: document.querySelector("#endpoint"),
   model: document.querySelector("#model"),
   temperature: document.querySelector("#temperature"),
   maxTokens: document.querySelector("#max-tokens"),
@@ -58,6 +59,22 @@ const elements = {
   finishedRequests: document.querySelector("#finished-requests"),
   errors: document.querySelector("#errors"),
 };
+
+function endpointUrl() {
+  const value = elements.endpoint.value.trim() || DEFAULT_ENDPOINT;
+  const endpoint = new URL(value);
+  if (!/^https?:$/.test(endpoint.protocol)) {
+    throw new Error("Server URL must use http or https");
+  }
+  return `${endpoint.origin}${endpoint.pathname.replace(/\/$/, "").replace(/\/v1$/, "")}`;
+}
+
+function apiFetch(path, options = {}) {
+  return fetch(path, {
+    ...options,
+    headers: { "X-LLM-Endpoint": endpointUrl(), ...options.headers },
+  });
+}
 
 function addBubble(role, content = "") {
   const empty = elements.messages.querySelector(".empty");
@@ -107,7 +124,7 @@ function renderServerMetrics(snapshot) {
 }
 
 async function fetchServerMetrics(render = true) {
-  const response = await fetch("/metrics");
+  const response = await apiFetch("/metrics");
   if (!response.ok) throw new Error(`Metrics HTTP ${response.status}`);
   const samples = parsePrometheus(await response.text());
   const snapshot = {
@@ -128,7 +145,7 @@ async function fetchServerMetrics(render = true) {
 
 async function loadModels() {
   try {
-    const response = await fetch(`${API}/models`);
+    const response = await apiFetch("/v1/models");
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const body = await response.json();
     elements.model.replaceChildren();
@@ -140,8 +157,8 @@ async function loadModels() {
     }
     elements.status.textContent = `${body.data.length} model${body.data.length === 1 ? "" : "s"} ready`;
   } catch (error) {
-    elements.status.textContent = "vLLM unavailable";
-    addBubble("error", `Could not reach vLLM: ${error.message}`);
+    elements.status.textContent = "Server unavailable";
+    addBubble("error", `Could not reach server: ${error.message}`);
   }
 }
 
@@ -188,7 +205,7 @@ async function runToolReply(metricsBefore) {
   let totalCompletionTokens = 0;
 
   for (let step = 0; step < 5; step += 1) {
-    const response = await fetch(`${API}/chat/completions`, {
+    const response = await apiFetch("/v1/chat/completions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -256,7 +273,7 @@ async function streamReply(metricsBefore) {
   let usage;
   let buffer = "";
 
-  const response = await fetch(`${API}/chat/completions`, {
+  const response = await apiFetch("/v1/chat/completions", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -350,9 +367,21 @@ elements.prompt.addEventListener("keydown", (event) => {
   }
 });
 
+elements.endpoint.addEventListener("change", () => {
+  try {
+    // Validate before replacing the available models and metrics.
+    endpointUrl();
+    loadModels();
+    fetchServerMetrics().catch(() => {});
+  } catch (error) {
+    elements.status.textContent = "Invalid server URL";
+    addBubble("error", error.message);
+  }
+});
+
 elements.clear.addEventListener("click", () => {
   messages.length = 0;
-  elements.messages.innerHTML = '<div class="empty">Send a message to the local model.</div>';
+  elements.messages.innerHTML = '<div class="empty">Send a message to the model.</div>';
   elements.metrics.textContent = "No request metrics yet.";
   elements.prompt.focus();
 });
