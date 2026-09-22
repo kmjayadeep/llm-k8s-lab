@@ -1,0 +1,66 @@
+services:
+  llama-server:
+    image: ${LLAMA_CPP_IMAGE:-ghcr.io/ggml-org/llama.cpp:server-rocm}
+    container_name: llama-qwen3.8-27b
+    devices:
+      - /dev/kfd:/dev/kfd
+      - /dev/dri:/dev/dri
+    group_add:
+      - video
+    ipc: host
+    network_mode: host
+    environment:
+      # renderD128 / HIP device 0 is the RX 7900 GRE on this host.
+      HIP_VISIBLE_DEVICES: ${HIP_VISIBLE_DEVICES:-0}
+      HF_TOKEN: ${HF_TOKEN:-}
+    volumes:
+      # --hf-repo uses the Hugging Face cache; keep the 12 GB model across recreates.
+      - ${HOME}/.cache/huggingface:/root/.cache/huggingface
+    command:
+      - --hf-repo
+      - ${MODEL_REPO:-ISTA-DASLab/Qwen3.8-27B-GSQ-RCO-GGUF}
+      - --hf-file
+      - ${MODEL_FILE:-Qwen3.8-27B-GSQ-RCO-IQ3_S-mtp.gguf}
+      - --alias
+      - ${SERVED_MODEL_NAME:-qwen}
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --n-gpu-layers
+      - all
+      - --ctx-size
+      - ${MAX_CONTEXT:-32768}
+      - --parallel
+      - ${PARALLEL:-1}
+      - --cache-type-k
+      - ${CACHE_TYPE_K:-q8_0}
+      - --cache-type-v
+      - ${CACHE_TYPE_V:-q8_0}
+      - --flash-attn
+      - "on"
+      - --threads
+      - ${THREADS:-6}
+      - --threads-batch
+      - ${THREADS_BATCH:-12}
+      - --batch-size
+      - ${BATCH_SIZE:-512}
+      - --ubatch-size
+      - ${UBATCH_SIZE:-512}
+      - --spec-type
+      - ${SPEC_TYPE:-draft-mtp}
+      - --spec-draft-n-max
+      - ${SPEC_DRAFT_MAX:-3}
+      - --no-mmproj
+      - --jinja
+      - --reasoning-format
+      - deepseek
+      - --metrics
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 180s
+    stop_grace_period: 30s
+    restart: "no"

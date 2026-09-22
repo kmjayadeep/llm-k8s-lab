@@ -92,6 +92,65 @@ additionaly, tool calling enabled with `--enable-auto-tool-choice`
 
 
 
-I heard good things about https://huggingface.co/ISTA-DASLab/Qwen3.8-27B-GSQ-RCO-GGUF
+3. Qwen3.8-27B GSQ-RCO GGUF
 
-for being able to run in 16G VRAM. Will try that at some point
+This uses `llama.cpp` rather than vLLM because the model is distributed as GGUF. On the
+RX 7900 GRE, the recommended IQ3_S quant with its MTP head fits entirely in 16 GB VRAM.
+
+```bash
+docker compose -f compose/3-qwen3.8-27b-gsq-rco/compose.yaml up -d
+docker compose -f compose/3-qwen3.8-27b-gsq-rco/compose.yaml logs -f
+```
+
+The tested default is text-only, one request slot, 32K context, and q8_0 KV cache. It used
+about 14.1 GB VRAM, leaving 2.2 GB free. A 64K test also loaded successfully but left only
+about 1.4 GB free, so 32K is the safer everyday setting on a GPU also driving the desktop.
+A short MTP-assisted response generated at about 55 tokens/s. prompt processing was about 112 tokens/s.
+
+The MTP GGUF is 11.29 GiB on disk. It is cached under `~/.cache/huggingface`. 
+
+To try 64K context:
+
+```bash
+MAX_CONTEXT=65536 docker compose -f compose/3-qwen3.8-27b-gsq-rco/compose.yaml up -d --force-recreate
+```
+
+The server exposes the OpenAI-compatible API at `http://127.0.0.1:8000/v1` using the
+served model name `qwen`.
+
+One problem i see is that the model overthinks a lot when used over pi. Turning thinking off in pi works. The built in llama.cpp UI works amazingly well.
+
+Pi config in ~/.pi/agent/models.json (Also enable in settings.json)
+
+```
+    "ollama": {
+      "api": "openai-completions",
+      "apiKey": "ollama",
+      "baseUrl": "http://127.0.0.1:8000/v1",
+      "compat": {
+        "supportsDeveloperRole": false,
+        "supportsReasoningEffort": false,
+        "thinkingFormat": "qwen-chat-template"
+      },
+      "models": [
+        {
+          "contextWindow": 32768,
+          "id": "qwen",
+          "input": [
+            "text"
+          ],
+          "maxTokens": 8192,
+          "name": "Qwen3.8 27B GSQ-RCO IQ3_S MTP (llama.cpp)",
+          "reasoning": true,
+          "thinkingLevelMap": {
+            "minimal": "low",
+            "low": "low",
+            "medium": "medium",
+            "high": "xhigh",
+            "xhigh": "xhigh",
+            "max": "xhigh"
+          }
+        }
+      ]
+    }
+```
