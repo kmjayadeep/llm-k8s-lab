@@ -56,10 +56,6 @@ services:
       - --reasoning-format
       - deepseek
       - --metrics
-      - --reasoning-budget
-      - "2048"
-      - --reasoning-effort
-      - "low"
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/health"]
       interval: 10s
