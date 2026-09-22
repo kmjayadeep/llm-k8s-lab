@@ -56,6 +56,10 @@ services:
       - --reasoning-format
       - deepseek
       - --metrics
+      - --reasoning-budget
+      - "2048"
+      - --reasoning-effort
+      - "low"
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/health"]
       interval: 10s
@@ -63,4 +67,23 @@ services:
       retries: 30
       start_period: 180s
     stop_grace_period: 30s
+    restart: "no"
+  llama-proxy:
+    image: mitmproxy/mitmproxy:12
+    container_name: llama-proxy
+    network_mode: host
+    command:
+      - mitmweb
+      - --mode
+      - reverse:http://127.0.0.1:8000
+      - --listen-host
+      - 127.0.0.1
+      - --listen-port
+      - "8001"
+      - --web-host
+      - 127.0.0.1
+      - --web-port
+      - "8081"
+      - --set
+      - web_password=test
     restart: "no"
